@@ -1,32 +1,26 @@
 #!/bin/bash
 
-echo "=============================="
-echo "      SYSTEM MONITOR"
-echo "=============================="
+source utils/colors.sh
 
-hostname=$(hostname)
-echo "Hostname      : $hostname"
+source modules/system.sh
+source modules/ram.sh
+source modules/disk.sh
+source modules/battery.sh
+source modules/network.sh
+source modules/cpu.sh
 
-os=$(uname)
-echo "OS            : $os"
+clear
 
-uptime_info=$(uptime)
-echo "Uptime        : $uptime_info"
+echo -e "${CYAN}==============================${NC}"
+echo -e "${GREEN}      SYSTEM MONITOR${NC}"
+echo -e "${CYAN}==============================${NC}"
 
-ram_used=$(top -l 1 | grep PhysMem | awk '{print $2}')
-echo "RAM Used      : $ram_used"
+echo -e "${YELLOW}Hostname:${NC}      $(get_hostname)"
+echo -e "${YELLOW}OS:${NC}            $(get_os)"
+echo -e "${YELLOW}CPU Usage:${NC}     $(get_cpu_usage)"
+echo -e "${YELLOW}RAM Usage:${NC}     $(get_ram_usage)"
+echo -e "${YELLOW}Disk Usage:${NC}    $(get_disk_usage)"
+echo -e "${YELLOW}Battery:${NC}       $(get_battery)"
+echo -e "${YELLOW}Internet:${NC}      $(check_internet)"
 
-disk_usage=$(df -h / | awk 'NR==2 {print $5}')
-echo "Disk Usage    : $disk_usage"
-
-battery=$(pmset -g batt | grep -Eo "\d+%" | head -1)
-echo "Battery       : $battery"
-
-if ping -c 1 google.com > /dev/null
-then
-    echo "Internet      : Connected"
-else
-    echo "Internet      : Disconnected"
-fi
-
-echo "=============================="
+echo -e "${CYAN}==============================${NC}"
