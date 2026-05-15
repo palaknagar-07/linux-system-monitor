@@ -1,18 +1,18 @@
 # Linux System Monitor
 
-A modular Bash script to monitor system information on Linux/macOS systems. This project uses a plugin-based architecture with separate modules for different monitoring components.
+A modular Bash script to monitor system information on Linux and macOS systems. The project keeps each metric in its own module so it is easy to improve or replace one part without rewriting the whole monitor.
 
 ## Features
 
-- **Modular Architecture**: Organized system monitoring across separate modules
-- CPU monitoring and usage tracking
-- RAM usage monitoring
-- Disk usage tracking
-- Battery percentage display (on macOS)
-- Network connectivity status
-- System information display (hostname, OS, uptime)
-- Color-coded output for better readability
-- Centralized utility functions and color definitions
+- Modular architecture across separate monitoring files
+- Hostname, OS, and uptime display
+- CPU, RAM, disk, battery, and internet status
+- macOS and Linux-aware metric collection where supported
+- Graceful `Unavailable` output when a metric cannot be collected
+- Color-coded terminal output
+- `--watch` mode for live refreshes
+- `--json` output for scripts and automation
+- `--no-color` and `--no-clear` options for cleaner logs
 
 ## Project Structure
 
@@ -33,17 +33,15 @@ linux-system-monitor/
 │   ├── colors.sh          # Color definitions and styling
 │   └── helpers.sh         # Helper functions
 │
-├── logs/                   # Application logs directory
-├── screenshots/            # Screenshot storage
-├── README.md              # This file
-└── .gitignore             # Git ignore rules
+└── README.md              # This file
 ```
 
 ## Requirements
 
-- Bash shell (v4.0+)
-- Standard Unix tools: `hostname`, `uname`, `uptime`, `top`, `df`, `ping`
-- On macOS: `pmset` for battery info
+- Bash shell
+- Standard Unix tools: `hostname`, `uname`, `uptime`, `df`, `ping`, `awk`, `sed`
+- macOS: `top`, `vm_stat`, and `pmset` for CPU, memory, and battery details
+- Linux: `/proc/stat`, `free`, and `/sys/class/power_supply` where available
 
 ## Installation
 
@@ -70,21 +68,55 @@ Run the main monitor script:
 ./monitor.sh
 ```
 
+Run without colors or screen clearing:
+```bash
+./monitor.sh --no-color --no-clear
+```
+
+Refresh every 2 seconds:
+```bash
+./monitor.sh --watch 2
+```
+
+Print JSON:
+```bash
+./monitor.sh --json
+```
+
+Show all options:
+```bash
+./monitor.sh --help
+```
+
 ## Output Example
 
 ```
 ==============================
       SYSTEM MONITOR
 ==============================
-Hostname      : mycomputer
-OS            : Darwin
-Uptime        :  10:30  up 2 days, 14:25, 3 users, load averages: 1.50 1.40 1.35
-CPU Usage     : 15.3%
-RAM Used      : 8.5G / 16G
-Disk Usage    : 45%
-Battery       : 85%
-Network       : Connected
+Hostname:      mycomputer
+OS:            Darwin
+Uptime:        10:30  up 2 days, 14:25, 3 users, load averages: 1.50 1.40 1.35
+CPU Usage:     15%
+RAM Usage:     8.5 GiB / 16.0 GiB (53%)
+Disk Usage:    45%
+Battery:       85% (charging)
+Internet:      Connected
 ==============================
+```
+
+JSON example:
+```json
+{
+  "hostname": "mycomputer",
+  "os": "Darwin",
+  "uptime": "10:30  up 2 days, 14:25, 3 users, load averages: 1.50 1.40 1.35",
+  "cpu": "15%",
+  "ram": "8.5 GiB / 16.0 GiB (53%)",
+  "disk": "45%",
+  "battery": "85% (charging)",
+  "internet": "Connected"
+}
 ```
 
 ## Modules Overview
@@ -114,6 +146,10 @@ Provides color definitions and terminal styling utilities for consistent output 
 
 ### utils/helpers.sh
 Contains common helper functions used across different modules.
+
+## Notes
+
+Some restricted environments block system commands such as `top`, `ps`, or network access. When that happens, the monitor keeps running and prints `Unavailable` or `Disconnected` instead of crashing.
 
 ## License
 

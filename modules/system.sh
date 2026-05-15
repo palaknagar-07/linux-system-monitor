@@ -6,10 +6,9 @@ get_hostname() {
 }
 
 get_os() {
-    uname
+    uname -s
 }
 
 get_uptime() {
-    uptime
+    uptime | sed 's/^[[:space:]]*//'
 }
-

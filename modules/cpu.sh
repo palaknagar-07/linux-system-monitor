@@ -2,9 +2,13 @@
 # CPU monitoring module
 
 get_cpu_usage() {
-    cpu_idle=$(top -l 1 | grep "CPU usage" | awk '{print $7}' | sed 's/%//')
+    local usage
 
-    cpu_usage=$(echo "100 - $cpu_idle" | bc)
+    if is_macos; then
+        usage=$(top -l 1 2>/dev/null | awk -F'[, ]+' '/CPU usage/ { idle=$7; sub(/%/, "", idle); printf "%.0f", 100 - idle }')
+    elif is_linux; then
+        usage=$(awk '/^cpu / { total=$2+$3+$4+$5+$6+$7+$8; idle=$5+$6; if (total > 0) printf "%.0f", 100 * (total - idle) / total }' /proc/stat 2>/dev/null)
+    fi
 
-    echo "${cpu_usage}%"
+    format_percent_status "$usage" 80 90
 }

@@ -2,12 +2,9 @@
 # Disk monitoring module
 
 get_disk_usage() {
-    usage=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+    local usage
 
-    if [ "$usage" -gt 80 ]
-    then
-        echo "WARNING: ${usage}%"
-    else
-        echo "${usage}%"
-    fi
+    usage=$(df -P / 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }')
+
+    format_percent_status "$usage" 80 90
 }
