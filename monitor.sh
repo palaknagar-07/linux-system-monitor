@@ -13,6 +13,7 @@ source "$SCRIPT_DIR/modules/disk.sh"
 source "$SCRIPT_DIR/modules/battery.sh"
 source "$SCRIPT_DIR/modules/network.sh"
 source "$SCRIPT_DIR/modules/cpu.sh"
+source "$SCRIPT_DIR/modules/processes.sh"
 
 WATCH_INTERVAL=""
 OUTPUT_FORMAT="text"
@@ -75,6 +76,60 @@ collect_metrics() {
     DISK_VALUE="$(get_disk_usage)"
     BATTERY_VALUE="$(get_battery)"
     INTERNET_VALUE="$(check_internet)"
+    TOP_RAM_PROCESSES="$(get_top_ram_processes 3)"
+    TOP_CPU_PROCESSES="$(get_top_cpu_processes 3)"
+    TOP_RAM_APPS="$(get_top_ram_apps 3)"
+    TOP_CPU_APPS="$(get_top_cpu_apps 3)"
+}
+
+render_app_list() {
+    local title="$1"
+    local apps="$2"
+    local value_type="$3"
+    local value_index
+    local suffix
+
+    if [ "$value_type" = "cpu" ]; then
+        value_index=3
+        suffix="CPU"
+    else
+        value_index=4
+        suffix="RAM"
+    fi
+
+    echo -e "${YELLOW}${title}:${NC}"
+    if [ "$apps" = "Unavailable" ] || [ -z "$apps" ]; then
+        echo "  Unavailable"
+    else
+        printf '%s\n' "$apps" |
+            awk -F'|' -v value_index="$value_index" -v suffix="$suffix" \
+                '{ printf "  %d. %s - %.1f%% %s across %d process(es)\n", NR, $1, $value_index, suffix, $2 }'
+    fi
+}
+
+render_process_list() {
+    local title="$1"
+    local processes="$2"
+    local value_type="$3"
+    local value_index
+    local suffix
+
+    if [ "$value_type" = "cpu" ]; then
+        value_index=3
+        suffix="CPU"
+    else
+        value_index=4
+        suffix="RAM"
+    fi
+
+    echo -e "${YELLOW}${title}:${NC}"
+    if [ "$processes" = "Unavailable" ] || [ -z "$processes" ]; then
+        echo "  Unavailable"
+    else
+        printf '%s\n' "$processes" |
+            awk -F'|' -v value_index="$value_index" -v suffix="$suffix" \
+                '{ printf "  %d. %s (PID %s) - %.1f%% %s\n", NR, $1, $2, $value_index, suffix }'
+    fi
 }
 
 render_text() {
@@ -94,8 +149,68 @@ render_text() {
     echo -e "${YELLOW}Disk Usage:${NC}    $DISK_VALUE"
     echo -e "${YELLOW}Battery:${NC}       $BATTERY_VALUE"
     echo -e "${YELLOW}Internet:${NC}      $INTERNET_VALUE"
+    render_app_list "Top Apps by RAM" "$TOP_RAM_APPS" "memory"
+    render_app_list "Top Apps by CPU" "$TOP_CPU_APPS" "cpu"
+    render_process_list "Top RAM Processes" "$TOP_RAM_PROCESSES" "memory"
+    render_process_list "Top CPU Processes" "$TOP_CPU_PROCESSES" "cpu"
 
     echo -e "${CYAN}==============================${NC}"
+}
+
+render_app_json_array() {
+    local apps="$1"
+    local value_type="$2"
+    local first=1
+    local name process_count cpu memory
+
+    if [ "$apps" != "Unavailable" ] && [ -n "$apps" ]; then
+        while IFS='|' read -r name process_count cpu memory; do
+            if [ "$first" -eq 0 ]; then
+                printf ',\n'
+            fi
+
+            if [ "$value_type" = "cpu" ]; then
+                printf '    { "name": "%s", "process_count": %s, "cpu_percent": "%s", "memory_percent": "%s" }' \
+                    "$(json_escape "$name")" "$(json_escape "$process_count")" "$(json_escape "$cpu")" "$(json_escape "$memory")"
+            else
+                printf '    { "name": "%s", "process_count": %s, "memory_percent": "%s", "cpu_percent": "%s" }' \
+                    "$(json_escape "$name")" "$(json_escape "$process_count")" "$(json_escape "$memory")" "$(json_escape "$cpu")"
+            fi
+
+            first=0
+        done <<EOF
+$apps
+EOF
+        printf '\n'
+    fi
+}
+
+render_process_json_array() {
+    local processes="$1"
+    local value_type="$2"
+    local first=1
+    local name pid cpu memory
+
+    if [ "$processes" != "Unavailable" ] && [ -n "$processes" ]; then
+        while IFS='|' read -r name pid cpu memory; do
+            if [ "$first" -eq 0 ]; then
+                printf ',\n'
+            fi
+
+            if [ "$value_type" = "cpu" ]; then
+                printf '    { "name": "%s", "pid": "%s", "cpu_percent": "%s", "memory_percent": "%s" }' \
+                    "$(json_escape "$name")" "$(json_escape "$pid")" "$(json_escape "$cpu")" "$(json_escape "$memory")"
+            else
+                printf '    { "name": "%s", "pid": "%s", "memory_percent": "%s", "cpu_percent": "%s" }' \
+                    "$(json_escape "$name")" "$(json_escape "$pid")" "$(json_escape "$memory")" "$(json_escape "$cpu")"
+            fi
+
+            first=0
+        done <<EOF
+$processes
+EOF
+        printf '\n'
+    fi
 }
 
 render_json() {
@@ -107,7 +222,19 @@ render_json() {
     printf '  "ram": "%s",\n' "$(json_escape "$RAM_VALUE")"
     printf '  "disk": "%s",\n' "$(json_escape "$DISK_VALUE")"
     printf '  "battery": "%s",\n' "$(json_escape "$BATTERY_VALUE")"
-    printf '  "internet": "%s"\n' "$(json_escape "$INTERNET_VALUE")"
+    printf '  "internet": "%s",\n' "$(json_escape "$INTERNET_VALUE")"
+    printf '  "top_ram_apps": [\n'
+    render_app_json_array "$TOP_RAM_APPS" "memory"
+    printf '  ],\n'
+    printf '  "top_cpu_apps": [\n'
+    render_app_json_array "$TOP_CPU_APPS" "cpu"
+    printf '  ],\n'
+    printf '  "top_ram_processes": [\n'
+    render_process_json_array "$TOP_RAM_PROCESSES" "memory"
+    printf '  ],\n'
+    printf '  "top_cpu_processes": [\n'
+    render_process_json_array "$TOP_CPU_PROCESSES" "cpu"
+    printf '  ]\n'
     printf '}\n'
 }
 
