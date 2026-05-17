@@ -108,13 +108,13 @@ Disk Usage:    45%
 Battery:       85% (charging)
 Internet:      Connected
 Top Apps by RAM:
-  1. Safari/WebKit - 11.6% RAM across 4 process(es)
-  2. VS Code - 6.2% RAM across 2 process(es)
-  3. Docker - 4.8% RAM across 3 process(es)
+  1. Safari/WebKit - 11.6% RAM across 4 processes
+  2. VS Code - 6.2% RAM across 2 processes
+  3. Docker - 4.8% RAM across 3 processes
 Top Apps by CPU:
-  1. Safari/WebKit - 15.4% CPU across 4 process(es)
-  2. VS Code - 10.1% CPU across 2 process(es)
-  3. WindowServer - 6.4% CPU across 1 process(es)
+  1. Safari/WebKit - 15.4% CPU across 4 processes
+  2. VS Code - 10.1% CPU across 2 processes
+  3. WindowServer - 6.4% CPU across 1 process
 Top RAM Processes:
   1. Safari (PID 1234) - 8.5% RAM
   2. Code Helper (PID 5678) - 4.2% RAM

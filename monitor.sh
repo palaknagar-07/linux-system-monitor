@@ -103,7 +103,10 @@ render_app_list() {
     else
         printf '%s\n' "$apps" |
             awk -F'|' -v value_index="$value_index" -v suffix="$suffix" \
-                '{ printf "  %d. %s - %.1f%% %s across %d process(es)\n", NR, $1, $value_index, suffix, $2 }'
+                '{
+                    label = ($2 == 1) ? "process" : "processes"
+                    printf "  %d. %s - %.1f%% %s across %d %s\n", NR, $1, $value_index, suffix, $2, label
+                }'
     fi
 }
 

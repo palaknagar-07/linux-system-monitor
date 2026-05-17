@@ -10,7 +10,7 @@ get_process_table() {
     fi
 
     if is_macos; then
-        ps_output=$(ps -axo pid=,%cpu=,%mem=,command= 2>/dev/null)
+        ps_output=$(ps -axww -o pid=,%cpu=,%mem=,command= 2>/dev/null)
     else
         ps_output=$(ps -eo pid=,%cpu=,%mem=,command= 2>/dev/null)
     fi
@@ -61,7 +61,7 @@ get_app_name() {
         "Google Chrome"*|"Chrome Helper"*|"Google Chrome Helper"*)
             echo "Google Chrome"
             ;;
-        "Code"|"Code Helper"*|"Visual Studio Code"*)
+        "Code"|"Code Helper"*|"Visual"|"Visual Studio Code"*)
             echo "VS Code"
             ;;
         "Windsurf"|"Windsurf Helper"*)
