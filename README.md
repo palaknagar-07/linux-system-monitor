@@ -7,7 +7,9 @@ A modular Bash script to monitor system information on Linux and macOS systems. 
 - Modular architecture across separate monitoring files
 - Hostname, OS, and uptime display
 - CPU, RAM, disk, battery, and internet status
-- Top apps grouped across related processes
+- System health score with explainable health signals
+- RAM breakdown estimate for apps/system/cache/free memory
+- Top apps grouped from app bundle paths and parent process ownership
 - Top 3 RAM-consuming processes
 - Top 3 CPU-consuming processes
 - macOS and Linux-aware metric collection where supported
@@ -30,6 +32,7 @@ linux-system-monitor/
 │   ├── disk.sh            # Disk usage monitoring
 │   ├── battery.sh         # Battery status monitoring
 │   ├── network.sh         # Network connectivity monitoring
+│   ├── health.sh          # Health score and signal calculation
 │   ├── processes.sh       # Top process monitoring
 │   └── system.sh          # System information display
 │
@@ -99,6 +102,8 @@ Show all options:
 ==============================
       SYSTEM MONITOR
 ==============================
+System Health: 100/100 - Excellent
+
 Hostname:      mycomputer
 OS:            Darwin
 Uptime:        10:30  up 2 days, 14:25, 3 users, load averages: 1.50 1.40 1.35
@@ -107,14 +112,29 @@ RAM Usage:     8.5 GiB / 16.0 GiB (53%)
 Disk Usage:    45%
 Battery:       85% (charging)
 Internet:      Connected
+
+RAM Breakdown (estimate):
+  App Memory:         7.8 GiB
+  Wired/System:       2.4 GiB
+  Compressed:         1.1 GiB
+  Cache/Inactive:     4.6 GiB
+  Free:               7.4 GiB
+
+Health Signals:
+  CPU:     Good      - 15% usage
+  RAM:     Good      - 53% usage
+  Disk:    Excellent - 45% used
+  Battery: Good      - 85% charging
+  Network: Good      - Connected
+
 Top Apps by RAM:
-  1. Safari/WebKit - 11.6% RAM across 4 processes
-  2. VS Code - 6.2% RAM across 2 processes
-  3. Docker - 4.8% RAM across 3 processes
+  1. Safari - 11.6% RAM across 4 processes
+  2. Visual Studio Code - 6.2% RAM across 2 processes
+  3. Unresolved WebKit Process - 4.8% RAM across 1 process [low confidence: webkit_owner_not_found]
 Top Apps by CPU:
-  1. Safari/WebKit - 15.4% CPU across 4 processes
-  2. VS Code - 10.1% CPU across 2 processes
-  3. WindowServer - 6.4% CPU across 1 process
+  1. Safari - 15.4% CPU across 4 processes
+  2. Visual Studio Code - 10.1% CPU across 2 processes
+  3. System: WindowServer - 6.4% CPU across 1 process
 Top RAM Processes:
   1. Safari (PID 1234) - 8.5% RAM
   2. Code Helper (PID 5678) - 4.2% RAM
@@ -137,15 +157,33 @@ JSON example:
   "disk": "45%",
   "battery": "85% (charging)",
   "internet": "Connected",
+  "health": {
+    "score": 100,
+    "label": "Excellent",
+    "signals": [
+      { "name": "CPU", "status": "Good", "detail": "15% usage", "penalty": 0 },
+      { "name": "RAM", "status": "Good", "detail": "53% usage", "penalty": 0 },
+      { "name": "Disk", "status": "Excellent", "detail": "45% used", "penalty": 0 },
+      { "name": "Battery", "status": "Good", "detail": "85% charging", "penalty": 0 },
+      { "name": "Network", "status": "Good", "detail": "Connected", "penalty": 0 }
+    ]
+  },
+  "ram_breakdown": {
+    "app_memory_gib": "7.8",
+    "wired_system_gib": "2.4",
+    "compressed_gib": "1.1",
+    "cache_inactive_gib": "4.6",
+    "free_gib": "7.4"
+  },
   "top_ram_apps": [
-    { "name": "Safari/WebKit", "process_count": 4, "memory_percent": "11.6", "cpu_percent": "15.4" },
-    { "name": "VS Code", "process_count": 2, "memory_percent": "6.2", "cpu_percent": "10.1" },
-    { "name": "Docker", "process_count": 3, "memory_percent": "4.8", "cpu_percent": "2.4" }
+    { "name": "Safari", "process_count": 4, "memory_percent": "11.6", "cpu_percent": "15.4", "confidence": "high", "reason": "parent_app_bundle" },
+    { "name": "Visual Studio Code", "process_count": 2, "memory_percent": "6.2", "cpu_percent": "10.1", "confidence": "high", "reason": "app_bundle" },
+    { "name": "Unresolved WebKit Process", "process_count": 1, "memory_percent": "4.8", "cpu_percent": "2.4", "confidence": "low", "reason": "webkit_owner_not_found" }
   ],
   "top_cpu_apps": [
-    { "name": "Safari/WebKit", "process_count": 4, "cpu_percent": "15.4", "memory_percent": "11.6" },
-    { "name": "VS Code", "process_count": 2, "cpu_percent": "10.1", "memory_percent": "6.2" },
-    { "name": "WindowServer", "process_count": 1, "cpu_percent": "6.4", "memory_percent": "3.1" }
+    { "name": "Safari", "process_count": 4, "cpu_percent": "15.4", "memory_percent": "11.6", "confidence": "high", "reason": "parent_app_bundle" },
+    { "name": "Visual Studio Code", "process_count": 2, "cpu_percent": "10.1", "memory_percent": "6.2", "confidence": "high", "reason": "app_bundle" },
+    { "name": "System: WindowServer", "process_count": 1, "cpu_percent": "6.4", "memory_percent": "3.1", "confidence": "high", "reason": "known_system_process" }
   ],
   "top_ram_processes": [
     { "name": "Safari", "pid": "1234", "memory_percent": "8.5", "cpu_percent": "6.4" },
@@ -177,8 +215,11 @@ Displays battery percentage and charging status (macOS systems).
 ### modules/network.sh
 Tests internet connectivity and network status.
 
+### modules/health.sh
+Calculates the overall system health score from CPU, RAM, disk, battery, and network status, then explains the score through per-metric health signals.
+
 ### modules/processes.sh
-Shows the top RAM-consuming and CPU-consuming apps and processes. Apps are grouped from related processes so users can understand resource usage at the application level.
+Shows the top RAM-consuming and CPU-consuming apps and processes. App grouping is evidence-based: the resolver checks macOS/Linux process data, extracts `.app` bundle ownership when present, traces parent process ownership for helpers, classifies exact system processes, and marks unresolved helper/WebKit processes with low confidence instead of guessing.
 
 ### modules/system.sh
 Displays system information including hostname, OS, and uptime.

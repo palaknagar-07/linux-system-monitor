@@ -33,6 +33,17 @@ format_percent_status() {
     fi
 }
 
+extract_percent() {
+    local value="$1"
+    local percent
+
+    percent=$(printf '%s\n' "$value" | awk 'match($0, /[0-9]+(\.[0-9]+)?%/) { print substr($0, RSTART, RLENGTH - 1); exit }')
+
+    if [ -n "$percent" ]; then
+        printf '%.0f\n' "$percent"
+    fi
+}
+
 json_escape() {
     local value="$1"
     value=${value//\\/\\\\}
